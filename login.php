@@ -20,7 +20,8 @@
                             {
                                 header("Location: admin/dashboard.php");
                             }else{
-                                echo "Dashboard for user";
+                                header("Location: index.php");
+                                exit();
                             }
                     }
                     else{

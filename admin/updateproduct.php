@@ -7,26 +7,60 @@ if(isset($_SESSION['user_id']))
             {
                 $sql1 = "select * from categories";
                 $result1 = mysqli_query($conn,$sql1);
+                if(isset($_GET['product_id'])){
+                    $product_id = $_GET['product_id'];
+
+                    $sql2 = "select * from products where id ='$product_id'";
+                    $result2 = mysqli_query($conn,$sql2);
+                    $row2 = mysqli_fetch_assoc($result2);
+                }
+                
                 if(isset($_POST['submit'])){
+                    $product_id = $_GET['product_id'];
                     $name = $_POST['name'];
                     $description = $_POST['description'];
                     $price = $_POST['price'];
                     $stock = $_POST['stock'];
-                    $image = $_FILES['image']['name'];
-                    $temp_location = $_FILES['image']['tmp_name'];
-                    $upload_location = "../image/";
-                    $category_name = $_POST['category_name'];
-                    $sql = "insert into products(name,description,price,stock,image,category_name) values('$name','$description','$price','$stock','$image','$category_name')";
-
-                    $result = mysqli_query($conn,$sql);
-                    if(!$result)
+                    
+                    $sql3 = "update products set name = '$name', description = '$description', price = '$price', stock = '$stock' where id = '$product_id'";
+                    $result3 = mysqli_query($conn,$sql3);
+                    if($result3)
                         {
+                            header("Location: displayproduct.php");
+                        }else{
                             echo "Error : {$conn->error}";
                         }
-                        else{
-                            echo "Product Added Successfully!";
-                            move_uploaded_file($temp_location,$upload_location.$image);
+
+                    $image = $_FILES['image']['name'];
+                    if($image)
+                        {
+                            $temp_location = $_FILES['image']['tmp_name'];
+                            $upload_location = "../image/";
+                            $sql4 = "update products set name = '$name', description = '$description', price = '$price', stock = '$stock',image = '$image' where id = '$product_id'";
+                            $result4 = mysqli_query($conn,$sql4);
+                            if($result4)
+                                {
+                                    move_uploaded_file($temp_location,$upload_location.$image);
+                                    header("Location: displayproduct.php");
+                                }else{
+                                    echo "Error : {$conn->error}";
+                                }
                         }
+
+                    $category_name = $_POST['category_name'];
+                    if($category_name)
+                        {
+                            
+                            $sql5 = "update products set name = '$name', description = '$description', price = '$price', stock = '$stock',category_name = '$category_name' where id = '$product_id'";
+                            $result5 = mysqli_query($conn,$sql5);
+                            if($result5)
+                                {
+                                    header("Location: displayproduct.php");
+                                }else{
+                                    echo "Error : {$conn->error}";
+                                }
+                        }
+                    
                 }
             }else{
                 echo "Go for user DashBoard";
@@ -227,13 +261,16 @@ if(isset($_SESSION['user_id']))
     </div>
     <div class="dashboard_main">
         
-            <form action="addproduct.php" method="post" enctype="multipart/form-data">
-                <input type="text" name="name" placeholder="Enter Product Name!" required>
-                <textarea name="description" placeholder="Enter Product Description" required></textarea>
-                <input type="number" name="price" placeholder="Enter Price!" required>
-                <input type="number" name="stock" placeholder="enter Stock number!" required>
-                <h2>upload Image Here!</h2>
-                <input type="file" name="image" required>
+            <form action="updateproduct.php?product_id=<?php echo $product_id?>" method="post" enctype="multipart/form-data">
+                <input type="text" name="name" value="<?php echo $row2['name']; ?>">
+                <textarea name="description">
+                    <?php echo $row2['description']; ?>
+                </textarea>
+                <input type="number" name="price" value="<?php echo $row2['price']; ?>">
+                <input type="number" name="stock" value="<?php echo $row2['stock']; ?>">
+                <img src="../image/<?php echo $row2['name']; ?>" alt="">
+                <input type="file" name="image">
+                <h1>Category Name is:<?php echo $row2['category_name']; ?></h1>
                 <select name="category_name" >
                     <?php 
                 while($row = mysqli_fetch_assoc($result1)){
@@ -242,7 +279,7 @@ if(isset($_SESSION['user_id']))
                     <?php } ?>
                 </select>
                 
-                <input class="button" type="submit" name="submit" value="Add Product">
+                <input class="button" type="submit" name="submit" value="Update Product">
             </form>
         
     </div>

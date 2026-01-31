@@ -213,6 +213,15 @@ td:last-child {
     border-right: none;
 }
 
+td img {
+    width: 80px;       /* fixed width */
+    height: 80px;      /* fixed height */
+    object-fit: cover; /* keeps image ratio & crops nicely */
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+
 </style>
 
 </head>
@@ -221,6 +230,7 @@ td:last-child {
         <ul>
             <li><a href="addproduct.php">Add Product</a></li>
             <li><a href="displayproduct.php">View Order</a></li>
+            <li><a href="dashboard.php">Dashboard</a></li>
             <li><a href="../logout.php">Logout</a></li>
         </ul>
     </div>
@@ -248,7 +258,7 @@ td:last-child {
                 <td><?php echo $row['stock']?></td>
                 <td><img src="../image/<?php echo $row['image']?>" alt=""></td>
                 <td><?php echo $row['category_name']?></td>
-                <td><a class="update" href="#">Update</a></td>
+                <td><a class="update" href="updateproduct.php?product_id=<?php echo $row['id']?>">Update</a></td>
                 <td><a class="delete" href="deleteproduct.php?product_id=<?php echo $row['id']?>">Delete</a></td>
             </tr>
             <?php }

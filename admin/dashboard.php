@@ -6,7 +6,7 @@ if(isset($_SESSION['user_id']))
             {
                 
             }else{
-                echo "Go for user DashBoard";
+                header("Location: ../dashboard.php");
             }
     }else{
         header("Location: ../index.php");
@@ -128,6 +128,7 @@ if(isset($_SESSION['user_id']))
         <ul>
             <li><a href="addproduct.php">Add Product</a></li>
             <li><a href="displayproduct.php">View Order</a></li>
+            <li><a href="../index.php">Home</a></li>
             <li><a href="../logout.php">Logout</a></li>
         </ul>
     </div>

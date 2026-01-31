@@ -114,6 +114,7 @@ $result_category = mysqli_query($conn,$sql_category);
             margin: 2px;
         } */
     </style> -->
+
 <style>
 *{
     margin: 0;
@@ -122,12 +123,8 @@ $result_category = mysqli_query($conn,$sql_category);
     font-family: Arial, Helvetica, sans-serif;
 }
 
-/* PAGE LAYOUT (Sticky Footer Fix) */
 body{
     background-color: #f5f5f5;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 
 /* HEADER */
@@ -139,20 +136,15 @@ body{
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 40px;
+    padding: 18px 40px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     z-index: 1000;
 }
 
-.header a{
-    text-decoration: none;
+.header h1{
     color: white;
-    font-weight: bold;
-    transition: 0.3s;
-}
-
-.header a:hover{
-    opacity: 0.85;
+    font-size: 26px;
+    letter-spacing: 1px;
 }
 
 .header ul{
@@ -165,50 +157,49 @@ body{
     margin-left: 25px;
 }
 
-/* CATEGORIES BOX */
-.categories{
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: white;
-    padding: 6px 14px;
-    border-radius: 25px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-.categories span{
-    color: #e74c3c;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.categories a{
+.header a{
     text-decoration: none;
-    color: #333;
+    color: white;
     font-weight: bold;
-    font-size: 14px;
-    padding: 4px 10px;
-    border-radius: 15px;
     transition: 0.3s;
 }
 
-.categories a:hover{
-    background-color: #e74c3c;
-    color: white;
+.header a:hover{
+    opacity: 0.8;
 }
 
-/* HERO (optional) */
+/* HERO SECTION (optional if used) */
 .hero{
-    margin-top: 100px;
+    margin-top: 90px;
     padding: 60px 30px;
     text-align: center;
     background: white;
 }
 
+.hero h2{
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.hero p{
+    font-size: 18px;
+    color: #555;
+}
+
+.hero button{
+    margin-top: 20px;
+    padding: 12px 25px;
+    font-size: 16px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
 /* MAIN AREA */
 .main{
-    flex: 1; /* pushes footer down */
-    margin-top: 100px; /* space for fixed header */
+    margin-top: 30px;
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
@@ -221,8 +212,8 @@ body{
     background: white;
     width: 260px;
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    box-shadow: 0 0 12px rgba(0,0,0,0.08);
     text-align: center;
     transition: 0.3s;
 }
@@ -270,6 +261,7 @@ body{
     color: white;
     text-align: center;
     padding: 15px;
+    margin-top: 40px;
 }
 
 /* RESPONSIVE */
@@ -277,57 +269,49 @@ body{
     .header{
         flex-direction: column;
         gap: 10px;
-        padding: 15px;
     }
-
     .header ul{
         flex-wrap: wrap;
         justify-content: center;
     }
-
-    .categories{
-        flex-wrap: wrap;
-        justify-content: center;
-    }
 }
-
 </style>
+
 
 </head>
 <body>
     <header class="header">
+        
+        <a href="index.php"><img src="" alt="">KickFit</a>
+        
+        <!-- Categories -->
+        <!-- <div class="categories">
+            <span>Categories :</span>
+            <a href="index.php?category_name=men">Men</a>
+            <a href="index.php?category_name=women">Women</a>
+            <a href="index.php?category_name=kids">Kids</a>
+        </div> -->
 
-    <!-- Logo -->
-    <h1><a href="index.php" style="color:white;text-decoration:none;">KickFit</a></h1>
-
-    <!-- Categories Box -->
-    <div class="categories">
-        <span>Categories :</span>
-        <?php while($row_category = mysqli_fetch_assoc($result_category)){ ?>
-            <a href="index.php?category_name=<?php echo $row_category['name']; ?>">
-                <?php echo ucfirst($row_category['name']); ?>
-            </a>
-        <?php } ?>
-    </div>
-
-    <!-- Navigation -->
-    <nav>
         <ul>
-            <?php if(!isset($_SESSION['user_id'])){ ?>
-                <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Signup</a></li>
-            <?php } ?>
-
-            <li><a href="index.php">Shop</a></li>
-
-            <?php if(isset($_SESSION['user_id'])){ ?>
-                <li><a href="admin/dashboard.php">Dashboard</a></li>
-            <?php } ?>
+            <?php while($row_category = mysqli_fetch_assoc($result_category)){?>
+            <li><a href="index.php?<?php echo $row_category['name']?>"><?php echo $row_category['name']?></a></li>
+            <?php }?>
         </ul>
-    </nav>
 
-</header>
+        <nav>
+            <ul>
+                <?php if(!isset($_SESSION['user_id'])){?>
+                <li><a href="login.php">login</a></li>
+                <li><a href="register.php">signup</a></li>
+                <?php }?>
+                <li><a href="index.php">Shop</a></li>
 
+                <?php if(isset($_SESSION['user_id'])) {?>
+                <li><a href="admin/dashboard.php">dashboard</a></li>
+                <?php }?>
+            </ul>
+        </nav>
+    </header>
     <main class="main">
         <?php while($row = mysqli_fetch_assoc($result_product_category)){
             ?>
