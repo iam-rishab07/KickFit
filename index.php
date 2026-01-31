@@ -4,10 +4,10 @@ include "db.php";
 if(isset($_GET['category_name']))
     {
         $category_name = $_GET['category_name'];
-        $sql_product_category = "select * from products where category_name = '$category_name'";
+        $sql_product_category = "select * from products where category_name = '$category_name' and stock >0";
         $result_product_category = mysqli_query($conn,$sql_product_category);
     }else{
-        $sql_product_category = "select * from products";
+        $sql_product_category = "select * from products where stock >0";
         $result_product_category = mysqli_query($conn,$sql_product_category);
     }
 $sql_category = "select * from categories";
@@ -291,6 +291,27 @@ body{
     }
 }
 
+.product .desc{
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 6px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* DESCRIPTION — FORCE ONE LINE */
+.product p{
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 6px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
 </style>
 
 </head>
@@ -329,19 +350,24 @@ body{
 </header>
 
     <main class="main">
-        <?php while($row = mysqli_fetch_assoc($result_product_category)){
+        <?php while($row_product_category = mysqli_fetch_assoc($result_product_category)){
             ?>
             <div class="product"> 
-                <img src="image/<?php echo $row['image']; ?>" alt="productimg">
-                <h3><?php echo $row['name']; ?></h3>
-                <p><?php echo $row['description']; ?></p>
+                <img src="image/<?php echo $row_product_category['image']; ?>" alt="productimg">
+                <h3><?php echo $row_product_category['name']; ?></h3>
+                <p class="desc"><?php echo $row_product_category['description']; ?></p>
                 <p style="color:green; font-weight:bold;">
-                <?php echo "Pcs Left:".$row['stock'] ?>
+                <?php echo "Pcs Left:".$row_product_category['stock'] ?>
                 </p>
                 <p class="productprice">
-                <?php echo "Rs.".$row['price']; ?>
+                <?php echo "Rs.".$row_product_category['price']; ?>
                 </p>
-                <a href="#">Add to Cart</a>
+                <?php if(isset($_SESSION['user_id'])){?>
+                <a href="singleorder.php?user_id=<?php echo $_SESSION['user_id']?>&product_id=<?php echo $row_product_category['id']?>&product_price=<?php echo $row_product_category['price'];?>">Buy Now</a>
+                <?php }?>
+                <?php if(!isset($_SESSION['user_id'])){?>
+                <a href="login.php">Buy Now</a>
+                <?php }?>
             </div>
         <?php }?>
 

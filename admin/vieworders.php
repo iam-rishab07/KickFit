@@ -5,7 +5,8 @@ if(isset($_SESSION['user_id']))
     {
         if($_SESSION['user_role'] == "admin")
             {
-                $sql = "select * from products";
+               
+                $sql = "select * from payments";
                 $result = mysqli_query($conn,$sql);
 
                     if(!$result)
@@ -229,7 +230,7 @@ td img {
     <div class="dashboard_sidebar">
         <ul>
             <li><a href="addproduct.php">Add Product</a></li>
-            <li><a href="vieworders.php">View Orders</a></li>
+            <li><a href="displayproduct.php">View Order</a></li>
             <li><a href="dashboard.php">Dashboard</a></li>
             <li><a href="../logout.php">Logout</a></li>
         </ul>
@@ -238,28 +239,20 @@ td img {
         <table>
         <thead>
             <tr>
-                <th>Product Name</th>
-                <th>Description</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Image</th>
-                <th>Category Name</th>
-                <th>Action</th>
-                <th>Action</th>
+                <th>Order Id</th>
+                <th>User Id</th>
+                <th>total Amount</th>
+                <th>Payment Method</th>
             </tr>
         </thead>
         <tbody>
             <?php while($row = mysqli_fetch_assoc($result)) {
                 ?>
             <tr>
-                <td><?php echo $row['name']?></td>
-                <td><?php echo $row['description']?></td>
-                <td><?php echo $row['price']?></td>
-                <td><?php echo $row['stock']?></td>
-                <td><img src="../image/<?php echo $row['image']?>" alt=""></td>
-                <td><?php echo $row['category_name']?></td>
-                <td><a class="update" href="updateproduct.php?product_id=<?php echo $row['id']?>">Update</a></td>
-                <td><a class="delete" href="deleteproduct.php?product_id=<?php echo $row['id']?>">Delete</a></td>
+                <td><?php echo $row['order_id']?></td>
+                <td><?php echo $row['user_id']?></td>
+                <td><?php echo $row['total_amount']?></td>
+                <td><?php echo $row['payment_method']?></td>
             </tr>
             <?php }
             ?>

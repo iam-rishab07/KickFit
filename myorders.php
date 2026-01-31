@@ -1,11 +1,12 @@
 <?php
-include "../db.php";
+include "db.php";
 session_start();
 if(isset($_SESSION['user_id']))
     {
-        if($_SESSION['user_role'] == "admin")
+        if($_SESSION['user_role'] == "user")
             {
-                $sql = "select * from products";
+                $user_id = $_SESSION['user_id'];
+                $sql = "select * from payments where user_id='$user_id'";
                 $result = mysqli_query($conn,$sql);
 
                     if(!$result)
@@ -17,10 +18,10 @@ if(isset($_SESSION['user_id']))
                         }
                 
             }else{
-                echo "Go for user DashBoard";
+                header("Location: admin/dashboard.php");
             }
     }else{
-        header("Location: ../index.php");
+        header("Location: index.php");
     }
 ?>
 
@@ -228,38 +229,29 @@ td img {
 <body>
     <div class="dashboard_sidebar">
         <ul>
-            <li><a href="addproduct.php">Add Product</a></li>
-            <li><a href="vieworders.php">View Orders</a></li>
+            <li><a href="index.php">Home</a></li>
             <li><a href="dashboard.php">Dashboard</a></li>
-            <li><a href="../logout.php">Logout</a></li>
+            <li><a href="logout.php">Logout</a></li>
         </ul>
     </div>
     <div class="dashboard_main">
         <table>
         <thead>
             <tr>
-                <th>Product Name</th>
-                <th>Description</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Image</th>
-                <th>Category Name</th>
-                <th>Action</th>
-                <th>Action</th>
+                <th>Order Id</th>
+                <th>User Id</th>
+                <th>total Amount</th>
+                <th>Payment Method</th>
             </tr>
         </thead>
         <tbody>
             <?php while($row = mysqli_fetch_assoc($result)) {
                 ?>
             <tr>
-                <td><?php echo $row['name']?></td>
-                <td><?php echo $row['description']?></td>
-                <td><?php echo $row['price']?></td>
-                <td><?php echo $row['stock']?></td>
-                <td><img src="../image/<?php echo $row['image']?>" alt=""></td>
-                <td><?php echo $row['category_name']?></td>
-                <td><a class="update" href="updateproduct.php?product_id=<?php echo $row['id']?>">Update</a></td>
-                <td><a class="delete" href="deleteproduct.php?product_id=<?php echo $row['id']?>">Delete</a></td>
+                <td><?php echo $row['order_id']?></td>
+                <td><?php echo $row['user_id']?></td>
+                <td><?php echo $row['total_amount']?></td>
+                <td><?php echo $row['payment_method']?></td>
             </tr>
             <?php }
             ?>

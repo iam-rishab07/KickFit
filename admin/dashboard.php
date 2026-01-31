@@ -127,7 +127,8 @@ if(isset($_SESSION['user_id']))
     <div class="dashboard_sidebar">
         <ul>
             <li><a href="addproduct.php">Add Product</a></li>
-            <li><a href="displayproduct.php">View Order</a></li>
+            <li><a href="displayproduct.php">View Products</a></li>
+            <li><a href="vieworders.php">View Orders</a></li>
             <li><a href="../index.php">Home</a></li>
             <li><a href="../logout.php">Logout</a></li>
         </ul>
@@ -135,7 +136,7 @@ if(isset($_SESSION['user_id']))
     <div class="dashboard_main">
         <p>
             <h1>This is Admin-Dashboard</h1>
-            <h2>user Details will Display Here</h2>
+            <h2>Admin Details will Display Here</h2>
         </p>
     </div>
 </body>
