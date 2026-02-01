@@ -98,48 +98,48 @@ text-decoration:none;padding:6px 10px;border-radius:5px;font-size:13px;font-weig
 </head>
 <body>
 
-<div class="dashboard_sidebar">
-<ul>
-<li><a href="dashboard.php">Dashboard</a></li>
-<li><a href="addproduct.php">Add Product</a></li>
-<li><a href="displayproduct.php">View Products</a></li>
-<li><a href="vieworders.php">View Orders</a></li>
-<li><a href="../index.php">Home</a></li>
-<li><a href="../logout.php">Logout</a></li>
-</ul>
-</div>
+    <div class="dashboard_sidebar">
+    <ul>
+    <li><a href="dashboard.php">Dashboard</a></li>
+    <li><a href="addproduct.php">Add Product</a></li>
+    <li><a href="displayproduct.php">View Products</a></li>
+    <li><a href="vieworders.php">View Orders</a></li>
+    <li><a href="../index.php">Home</a></li>
+    <li><a href="../logout.php">Logout</a></li>
+    </ul>
+    </div>
 
-<div class="dashboard_main">
-<h1>All Orders</h1>
-<table>
-<thead>
-<tr>
-<th>Order ID</th>
-<th>User Name</th>
-<th>Email</th>
-<th>Product</th>
-<th>Image</th>
-<th>Quantity</th>
-<th>Total Amount</th>
-<th>Payment Method</th>
-</tr>
-</thead>
-<tbody>
-<?php while($row = mysqli_fetch_assoc($result)) { ?>
-<tr>
-<td>#<?php echo $row['order_id']; ?></td>
-<td><?php echo $row['user_name']; ?></td>
-<td><?php echo $row['user_email']; ?></td>
-<td><?php echo $row['product_name']; ?></td>
-<td><img src="../image/<?php echo $row['product_image']; ?>" alt="Product"></td>
-<td><?php echo $row['product_quantity']; ?></td>
-<td>Rs. <?php echo $row['total_amount']; ?></td>
-<td><?php echo ucfirst($row['payment_method']); ?></td>
-</tr>
-<?php } ?>
-</tbody>
-</table>
-</div>
+    <div class="dashboard_main">
+        <h1>All Orders</h1>
+        <table>
+            <thead>
+                <tr>
+                <th>Order ID</th>
+                <th>User Name</th>
+                <th>Email</th>
+                <th>Product</th>
+                <th>Image</th>
+                <th>Quantity</th>
+                <th>Total Amount</th>
+                <th>Payment Method</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while($row = mysqli_fetch_assoc($result)) { ?>
+                <tr>
+                <td>#<?php echo $row['order_id']; ?></td>
+                <td><?php echo $row['user_name']; ?></td>
+                <td><?php echo $row['user_email']; ?></td>
+                <td><?php echo $row['product_name']; ?></td>
+                <td><img src="../image/<?php echo $row['product_image']; ?>" alt="Product"></td>
+                <td><?php echo $row['product_quantity']; ?></td>
+                <td>Rs. <?php echo $row['total_amount']; ?></td>
+                <td><?php echo ucfirst($row['payment_method']); ?></td>
+                </tr>
+                <?php } ?>
+            </tbody>
+        </table>
+    </div>
 
 </body>
 </html>

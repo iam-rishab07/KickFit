@@ -79,39 +79,39 @@ background:#27ae60;color:white;padding:4px 8px;border-radius:5px;font-size:12px
 </head>
 <body>
 
-<div class="dashboard_sidebar">
-<a href="dashboard.php">Dashboard</a>
-<a href="index.php">Shop</a>
-<a href="logout.php">Logout</a>
-</div>
+    <div class="dashboard_sidebar">
+        <a href="dashboard.php">Dashboard</a>
+        <a href="index.php">Shop</a>
+        <a href="logout.php">Logout</a>
+    </div>
 
-<div class="dashboard_main">
-<h1>My Orders</h1>
+    <div class="dashboard_main">
+        <h1>My Orders</h1>
 
-<table>
-<tr>
-<th>Order ID</th>
-<th>Product</th>
-<th>Image</th>
-<th>Qty</th>
-<th>Total</th>
-<th>Payment</th>
-<th>Status</th>
-</tr>
+        <table>
+            <tr>
+                <th>Order ID</th>
+                <th>Product</th>
+                <th>Image</th>
+                <th>Qty</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+            </tr>
 
-<?php while($row=mysqli_fetch_assoc($result)){ ?>
-<tr>
-<td>#<?php echo $row['order_id']?></td>
-<td><?php echo $row['product_name']?></td>
-<td><img src="image/<?php echo $row['image']?>"></td>
-<td><?php echo $row['product_quantity']?></td>
-<td>Rs. <?php echo $row['total_amount']?></td>
-<td><?php echo $row['payment_method']?></td>
-<td><span class="status">Confirmed</span></td>
-</tr>
-<?php } ?>
+            <?php while($row=mysqli_fetch_assoc($result)){ ?>
+            <tr>
+                <td>#<?php echo $row['order_id']?></td>
+                <td><?php echo $row['product_name']?></td>
+                <td><img src="image/<?php echo $row['image']?>"></td>
+                <td><?php echo $row['product_quantity']?></td>
+                <td>Rs. <?php echo $row['total_amount']?></td>
+                <td><?php echo $row['payment_method']?></td>
+                <td><span class="status">Confirmed</span></td>
+            </tr>
+            <?php } ?>
 
-</table>
-</div>
+        </table>
+    </div>
 </body>
 </html>

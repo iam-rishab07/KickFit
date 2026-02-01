@@ -84,51 +84,51 @@ color:white;font-weight:bold;cursor:pointer;transition:0.3s;text-decoration:none
         <h1><a href="index.php">KickFit</a></h1>
 
         <div class="categories">
-        <span>Categories:</span>
-        <?php while($row_category=mysqli_fetch_assoc($result_category)){ ?>
-        <a href="index.php?category_name=<?php echo $row_category['name'];?>"><?php echo ucfirst($row_category['name']);?></a>
-        <?php } ?>
+            <span>Categories:</span>
+            <?php while($row_category=mysqli_fetch_assoc($result_category)){ ?>
+            <a href="index.php?category_name=<?php echo $row_category['name'];?>"><?php echo ucfirst($row_category['name']);?></a>
+            <?php } ?>
         </div>
 
         <ul>
-        <?php if(!isset($_SESSION['user_id'])){ ?>
-        <li><a href="login.php">Login</a></li>
-        <li><a href="register.php">Signup</a></li>
-        <?php } ?>
-        <li><a href="index.php">Shop</a></li>
-        <?php if(isset($_SESSION['user_id'])){ ?>
-        <li><a href="admin/dashboard.php">Dashboard</a></li>
-        <?php } ?>
+            <?php if(!isset($_SESSION['user_id'])){ ?>
+            <li><a href="login.php">Login</a></li>
+            <li><a href="register.php">Signup</a></li>
+            <?php } ?>
+            <li><a href="index.php">Shop</a></li>
+            <?php if(isset($_SESSION['user_id'])){ ?>
+            <li><a href="admin/dashboard.php">Dashboard</a></li>
+            <?php } ?>
         </ul>
     </header>
 
     <main class="main">
-    <?php while($row=mysqli_fetch_assoc($result_product_category)){ ?>
-    <div class="product">
-    <img src="image/<?php echo $row['image'];?>">
-    <h3><?php echo $row['name'];?></h3>
-    <p><?php echo $row['description'];?></p>
-    <p style="color:green;font-weight:bold;">Stock: <?php echo $row['stock'];?></p>
-    <p style="font-weight:bold;">Rs. <?php echo $row['price'];?></p>
+        <?php while($row=mysqli_fetch_assoc($result_product_category)){ ?>
+            <div class="product">
+                <img src="image/<?php echo $row['image'];?>">
+                <h3><?php echo $row['name'];?></h3>
+                <p><?php echo $row['description'];?></p>
+                <p style="color:green;font-weight:bold;">Stock: <?php echo $row['stock'];?></p>
+                <p style="font-weight:bold;">Rs. <?php echo $row['price'];?></p>
 
-    <?php if(isset($_SESSION['user_id'])){ ?>
-    <form action="singleorder.php" method="get">
-    <input type="hidden" name="user_id" value="<?php echo $_SESSION['user_id'];?>">
-    <input type="hidden" name="product_id" value="<?php echo $row['id'];?>">
-    <input type="hidden" name="product_price" value="<?php echo $row['price'];?>">
+                <?php if(isset($_SESSION['user_id'])){ ?>
+                <form action="singleorder.php" method="get">
+                <input type="hidden" name="user_id" value="<?php echo $_SESSION['user_id'];?>">
+                <input type="hidden" name="product_id" value="<?php echo $row['id'];?>">
+                <input type="hidden" name="product_price" value="<?php echo $row['price'];?>">
 
-    <div class="qty-box">
-    <label>Qty</label>
-    <input type="number" name="quantity" value="1" min="1" max="<?php echo $row['stock'];?>">
-    </div>
+                <div class="qty-box">
+                    <label>Qty</label>
+                    <input type="number" name="quantity" value="1" min="1" max="<?php echo $row['stock'];?>">
+                </div>
 
-    <button type="submit" class="buy-btn">Buy Now</button>
-    </form>
-    <?php } else { ?>
-    <a href="login.php" class="buy-btn">Buy Now</a>
-    <?php } ?>
-    </div>
-    <?php } ?>
+                <button type="submit" class="buy-btn">Buy Now</button>
+                </form>
+                <?php } else { ?>
+                <a href="login.php" class="buy-btn">Buy Now</a>
+                <?php } ?>
+            </div>
+        <?php } ?>
     </main>
 
     <footer class="footer">Copyright ©Rishi Enterprises</footer>
