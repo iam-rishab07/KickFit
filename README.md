@@ -1,6 +1,6 @@
-🏋️ KickFit – E-Commerce Fitness Platform
+🏋️ KickFit – E-Commerce Shoe Platform
 
-KickFit is a dynamic fitness-based e-commerce web application developed using PHP and MySQL.
+KickFit is a dynamic web application developed using PHP and MySQL.
 It allows users to browse, purchase, and manage fitness products efficiently with a secure login system and admin management panel.
 
 🚀 Features:
