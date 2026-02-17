@@ -18,19 +18,27 @@ $user_id = $_SESSION['user_id'];
 /* ---------- FETCH USER INFO ---------- */
 $user = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM users WHERE id='$user_id'"));
 
-/* ---------- USER STATS ---------- */
+/* ---------- UPDATED USER STATS ---------- */
 
-// Total Orders
-$order_count = mysqli_fetch_assoc(mysqli_query($conn,
+/* 🟢 TOTAL ORDERS (Direct Buy + Cart Orders) */
+$direct_orders = mysqli_fetch_assoc(mysqli_query($conn,
     "SELECT COUNT(*) as total FROM single_order WHERE user_id='$user_id'"
 ))['total'];
 
-// Total Money Spent
+$cart_orders = mysqli_fetch_assoc(mysqli_query($conn,
+    "SELECT COUNT(*) as total FROM orders WHERE user_id='$user_id'"
+))['total'];
+
+$order_count = $direct_orders + $cart_orders;
+
+
+/* 🟢 TOTAL MONEY SPENT (from payments table = all successful orders) */
 $total_spent = mysqli_fetch_assoc(mysqli_query($conn,
-    "SELECT SUM(total_amount) as total FROM single_order WHERE user_id='$user_id'"
+    "SELECT SUM(total_amount) as total FROM payments WHERE user_id='$user_id'"
 ))['total'];
 
 if(!$total_spent) $total_spent = 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

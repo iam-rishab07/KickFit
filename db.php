@@ -4,7 +4,7 @@ $user = "root";
 $pass = "";
 $db   = "kickfit_db";
 
-$conn = new mysqli($host, $user, $pass, $db);
+$conn = new mysqli($host, $user, $pass, $db,3307);
 
 /* CHECK CONNECTION PROPERLY */
 if ($conn->connect_error) {

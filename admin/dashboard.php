@@ -19,19 +19,37 @@ $sql_admin = "SELECT name, email, phone, address, role FROM users WHERE id = '$a
 $result_admin = mysqli_query($conn, $sql_admin);
 $admin = mysqli_fetch_assoc($result_admin);
 
-/* ---------- DASHBOARD STATS ---------- */
 
-// Total Products
-$product_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM products"))['total'];
+/* ======================================================
+   🔥 DASHBOARD STATS (COMBINED ORDER SYSTEM)
+   ====================================================== */
 
-// Total Users
-$user_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM users WHERE role='user'"))['total'];
+// 🟢 Total Products
+$product_count = mysqli_fetch_assoc(mysqli_query($conn,
+    "SELECT COUNT(*) as total FROM products"
+))['total'];
 
-// Total Orders
-$order_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM single_order"))['total'];
+// 🟢 Total Users
+$user_count = mysqli_fetch_assoc(mysqli_query($conn,
+    "SELECT COUNT(*) as total FROM users WHERE role='user'"
+))['total'];
 
-// Total Revenue
-$revenue = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_amount) as total FROM single_order"))['total'];
+/* 🟢 TOTAL ORDERS (Buy Now + Cart Checkout) */
+$direct_orders = mysqli_fetch_assoc(mysqli_query($conn,
+    "SELECT COUNT(*) as total FROM single_order"
+))['total'];
+
+$cart_orders = mysqli_fetch_assoc(mysqli_query($conn,
+    "SELECT COUNT(*) as total FROM orders"
+))['total'];
+
+$order_count = $direct_orders + $cart_orders;
+
+/* 🟢 TOTAL REVENUE (ONLY FROM PAYMENTS) */
+$revenue = mysqli_fetch_assoc(mysqli_query($conn,
+    "SELECT SUM(total_amount) as total FROM payments"
+))['total'];
+
 if(!$revenue) $revenue = 0;
 
 ?>
@@ -43,12 +61,7 @@ if(!$revenue) $revenue = 0;
 <title>Admin Dashboard</title>
 
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
+*{margin:0;padding:0;box-sizing:border-box;font-family: Arial, Helvetica, sans-serif;}
 
 /* SIDEBAR */
 .dashboard_sidebar{
@@ -69,9 +82,7 @@ if(!$revenue) $revenue = 0;
     letter-spacing:1px;
 }
 
-.dashboard_sidebar ul{
-    list-style:none;
-}
+.dashboard_sidebar ul{list-style:none;}
 
 .dashboard_sidebar ul li a{
     display:block;
@@ -100,7 +111,37 @@ if(!$revenue) $revenue = 0;
     margin-bottom:25px;
 }
 
-/* ADMIN CARD */
+/* STATS GRID */
+.stats_grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap:20px;
+    margin-bottom:35px;
+}
+
+.stat_card{
+    background:white;
+    padding:22px;
+    border-radius:10px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.08);
+    transition:0.3s;
+}
+
+.stat_card:hover{transform:translateY(-5px);}
+
+.stat_card h3{
+    color:#888;
+    font-size:14px;
+    margin-bottom:10px;
+}
+
+.stat_card .number{
+    font-size:28px;
+    font-weight:bold;
+    color:#c0392b;
+}
+
+/* PROFILE CARD */
 .profile_card{
     background:white;
     padding:25px 30px;
@@ -123,50 +164,6 @@ if(!$revenue) $revenue = 0;
     font-weight:bold;
     color:#333;
 }
-
-/* RESPONSIVE */
-@media(max-width:768px){
-    .dashboard_sidebar{
-        width:180px;
-    }
-    .dashboard_main{
-        margin-left:180px;
-        padding:25px;
-    }
-}
-
-/* STATS GRID */
-.stats_grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap:20px;
-    margin-bottom:35px;
-}
-
-.stat_card{
-    background:white;
-    padding:22px;
-    border-radius:10px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.08);
-    transition:0.3s;
-}
-
-.stat_card:hover{
-    transform:translateY(-5px);
-}
-
-.stat_card h3{
-    color:#888;
-    font-size:14px;
-    margin-bottom:10px;
-}
-
-.stat_card .number{
-    font-size:28px;
-    font-weight:bold;
-    color:#c0392b;
-}
-
 </style>
 </head>
 
@@ -185,31 +182,33 @@ if(!$revenue) $revenue = 0;
 
 <div class="dashboard_main">
     <h1>Admin Dashboard</h1>
+
+    <!-- 🔥 STATS -->
     <div class="stats_grid">
 
-    <div class="stat_card">
-        <h3>Total Products</h3>
-        <div class="number"><?php echo $product_count; ?></div>
+        <div class="stat_card">
+            <h3>Total Products</h3>
+            <div class="number"><?php echo $product_count; ?></div>
+        </div>
+
+        <div class="stat_card">
+            <h3>Total Users</h3>
+            <div class="number"><?php echo $user_count; ?></div>
+        </div>
+
+        <div class="stat_card">
+            <h3>Total Orders</h3>
+            <div class="number"><?php echo $order_count; ?></div>
+        </div>
+
+        <div class="stat_card">
+            <h3>Total Revenue</h3>
+            <div class="number">₹<?php echo $revenue; ?></div>
+        </div>
+
     </div>
 
-    <div class="stat_card">
-        <h3>Total Users</h3>
-        <div class="number"><?php echo $user_count; ?></div>
-    </div>
-
-    <div class="stat_card">
-        <h3>Total Orders</h3>
-        <div class="number"><?php echo $order_count; ?></div>
-    </div>
-
-    <div class="stat_card">
-        <h3>Total Revenue</h3>
-        <div class="number">₹<?php echo $revenue; ?></div>
-    </div>
-
-</div>
-
-
+    <!-- ADMIN PROFILE -->
     <div class="profile_card">
         <h2>Admin Profile</h2>
 
