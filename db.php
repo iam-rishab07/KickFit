@@ -2,9 +2,9 @@
 $host = "localhost";
 $user = "root";
 $pass = "";
-$db   = "kickfit_db";
+$db   = "kickfit";
 
-$conn = new mysqli($host, $user, $pass, $db,3307);
+$conn = new mysqli($host, $user, $pass, $db);
 
 /* CHECK CONNECTION PROPERLY */
 if ($conn->connect_error) {

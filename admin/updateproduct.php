@@ -1,73 +1,62 @@
 <?php
 include "../db.php";
 session_start();
-if(isset($_SESSION['user_id']))
-    {
-        if($_SESSION['user_role'] == "admin")
-            {
-                $sql1 = "select * from categories";
-                $result1 = mysqli_query($conn,$sql1);
-                if(isset($_GET['product_id'])){
-                    $product_id = $_GET['product_id'];
 
-                    $sql2 = "select * from products where id ='$product_id'";
-                    $result2 = mysqli_query($conn,$sql2);
-                    $row2 = mysqli_fetch_assoc($result2);
-                }
-                
-                if(isset($_POST['submit'])){
-                    $product_id = $_GET['product_id'];
-                    $name = $_POST['name'];
-                    $description = $_POST['description'];
-                    $price = $_POST['price'];
-                    $stock = $_POST['stock'];
-                    
-                    $sql3 = "update products set name = '$name', description = '$description', price = '$price', stock = '$stock' where id = '$product_id'";
-                    $result3 = mysqli_query($conn,$sql3);
-                    if($result3)
-                        {
-                            header("Location: displayproduct.php");
-                        }else{
-                            echo "Error : {$conn->error}";
-                        }
+/* ---------- ACCESS CONTROL ---------- */
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] != "admin") {
+    header("Location: ../index.php");
+    exit();
+}
 
-                    $image = $_FILES['image']['name'];
-                    if($image)
-                        {
-                            $temp_location = $_FILES['image']['tmp_name'];
-                            $upload_location = "../image/";
-                            $sql4 = "update products set name = '$name', description = '$description', price = '$price', stock = '$stock',image = '$image' where id = '$product_id'";
-                            $result4 = mysqli_query($conn,$sql4);
-                            if($result4)
-                                {
-                                    move_uploaded_file($temp_location,$upload_location.$image);
-                                    header("Location: displayproduct.php");
-                                }else{
-                                    echo "Error : {$conn->error}";
-                                }
-                        }
+$product_id = isset($_GET['product_id']) ? intval($_GET['product_id']) : 0;
+if ($product_id == 0) {
+    header("Location: displayproduct.php");
+    exit();
+}
 
-                    $category_name = $_POST['category_name'];
-                    if($category_name)
-                        {
-                            
-                            $sql5 = "update products set name = '$name', description = '$description', price = '$price', stock = '$stock',category_name = '$category_name' where id = '$product_id'";
-                            $result5 = mysqli_query($conn,$sql5);
-                            if($result5)
-                                {
-                                    header("Location: displayproduct.php");
-                                }else{
-                                    echo "Error : {$conn->error}";
-                                }
-                        }
-                    
-                }
-            }else{
-                echo "Go for user DashBoard";
-            }
-    }else{
-        header("Location: ../index.php");
+/* ---------- FETCH DATA FOR FORM ---------- */
+$cat_result = mysqli_query($conn, "SELECT * FROM categories");
+
+$stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$product = $stmt->get_result()->fetch_assoc();
+
+if (!$product) {
+    die("Product not found.");
+}
+
+/* ---------- UPDATE LOGIC ---------- */
+if (isset($_POST['submit'])) {
+    $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $description = mysqli_real_escape_string($conn, $_POST['description']);
+    $price = $_POST['price'];
+    $stock = $_POST['stock'];
+    $category_name = $_POST['category_name'];
+    
+    // Image Handling
+    $image = $_FILES['image']['name'];
+    if ($image) {
+        $temp_location = $_FILES['image']['tmp_name'];
+        $upload_location = "../image/";
+        move_uploaded_file($temp_location, $upload_location . $image);
+        
+        $sql = "UPDATE products SET name=?, description=?, price=?, stock=?, image=?, category_name=? WHERE id=?";
+        $update_stmt = $conn->prepare($sql);
+        $update_stmt->bind_param("ssdissi", $name, $description, $price, $stock, $image, $category_name, $product_id);
+    } else {
+        $sql = "UPDATE products SET name=?, description=?, price=?, stock=?, category_name=? WHERE id=?";
+        $update_stmt = $conn->prepare($sql);
+        $update_stmt->bind_param("ssdssi", $name, $description, $price, $stock, $category_name, $product_id);
     }
+
+    if ($update_stmt->execute()) {
+        header("Location: displayproduct.php?msg=updated");
+        exit();
+    } else {
+        $error = "Update failed: " . $conn->error;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -75,214 +64,139 @@ if(isset($_SESSION['user_id']))
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>dashboard</title>
-    <!-- <style>
-        *{
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-        .dashboard_sidebar{
-            position: fixed;
-            top: 0;
-            background-color: darkcyan;
-            width: 200px;
-            height: 100%;
-        }
-        .dashboard_sidebar ul li{
-            list-style: none;
-            text-align: center;
-            
-        }
-        .dashboard_sidebar ul li a{
-            padding: 10px;
-            display: block;
-            text-decoration: none;
-            color: white;
-        }
-        .dashboard_sidebar ul li a:hover{
-            background-color: black;
-        }
-        .dashboard_main{
-            position: relative;
-            padding: 30px;
-            left: 45%;
-            margin-top: 10px;
-        }
-        .dashboard_main input{
-            display: block;
-            margin: 10px;
-            padding: 20px;
-            border-left: 2px solid lightblue;
-            border-right: 2px solid lightcoral;
-            border-radius: 15px 50px;
-        }
-        .dashboard_main select{
-            display: inline-block;
-            margin: 10px;
-            padding: 20px;
-            border-left: 2px solid lightblue;
-            border-right: 2px solid lightcoral;
-            border-radius: 15px 50px;
-        }
-        .dashboard_main textarea{
-            display: block;
-            margin: 10px;
-            padding: 20px;
-            width: 30%;
-            border-radius: 15px 50px;
-        }
-        .button{
-            width: 15%;
-            background-color: green;
-            border-radius: 15px 50px;
-            border-left: 2px solid lightblue;
-            border-right: 2px solid lightcoral;
-        }
-    </style> -->
+    <title>Update Product | KickFit Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
+        :root {
+            --primary: #c0392b;
+            --sidebar-dark: #1a1c1e;
+            --bg-light: #f8fafc;
+            --white: #ffffff;
+            --text-dark: #1e293b;
+            --transition: all 0.3s ease;
+        }
 
-/* SIDEBAR */
-.dashboard_sidebar{
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 220px;
-    height: 100vh;
-    background: #c0392b;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    padding-top: 20px;
-}
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-light); color: var(--text-dark); display: flex; }
 
-.dashboard_sidebar ul li{
-    list-style: none;
-}
+        /* Sidebar Styles (Consistent with your dashboard) */
+        .sidebar {
+            width: 240px; height: 100vh; background: var(--sidebar-dark);
+            position: fixed; padding: 25px 0;
+        }
+        .sidebar ul li { list-style: none; }
+        .sidebar ul li a {
+            padding: 15px 25px; display: block; text-decoration: none; color: #fff;
+            font-weight: 500; transition: var(--transition); border-left: 4px solid transparent;
+        }
+        .sidebar ul li a:hover { background: #922b21; border-left: 4px solid #fff; }
 
-.dashboard_sidebar ul li a{
-    padding: 12px 20px;
-    display: block;
-    text-decoration: none;
-    color: #ffffff;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border-left: 4px solid transparent;
-}
+        /* Main Area */
+        .main-content { margin-left: 240px; width: 100%; padding: 40px; display: flex; justify-content: center; align-items: flex-start; }
 
-.dashboard_sidebar ul li a:hover{
-    background: #922b21;
-    border-left: 4px solid #ffffff;
-    padding-left: 26px;
-}
+        .form-card {
+            background: var(--white); width: 100%; max-width: 700px; padding: 40px;
+            border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
 
-/* MAIN AREA */
-.dashboard_main{
-    margin-left: 220px;
-    min-height: 100vh;
-    background: #f4f6f9;
+        .form-card h2 { margin-bottom: 25px; font-weight: 800; color: var(--primary); }
 
-    /* CENTER CONTENT */
-    display: flex;
-    justify-content: center;   /* horizontal center */
-    align-items: center;       /* vertical center */
-    padding: 40px 20px;
-}
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 8px; text-transform: uppercase; }
+        
+        input, select, textarea {
+            width: 100%; padding: 12px 15px; border: 1px solid #e2e8f0; border-radius: 8px;
+            font-size: 15px; transition: var(--transition); outline: none;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1); }
 
-/* FORM CARD */
-.dashboard_main form{
-    background: #ffffff;
-    width: 100%;
-    max-width: 600px;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
+        .current-img-box {
+            display: flex; align-items: center; gap: 20px; padding: 15px;
+            background: #f1f5f9; border-radius: 8px; margin-bottom: 15px;
+        }
+        .current-img-box img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
 
-/* INPUTS */
-.dashboard_main input,
-.dashboard_main select,
-.dashboard_main textarea{
-    width: 100%;
-    margin-bottom: 15px;
-    padding: 12px 14px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: 0.3s;
-}
-
-.dashboard_main input:focus,
-.dashboard_main select:focus,
-.dashboard_main textarea:focus{
-    border-color: #c0392b;
-    outline: none;
-    box-shadow: 0 0 6px rgba(192,57,43,0.3);
-}
-
-.dashboard_main textarea{
-    resize: vertical;
-    min-height: 100px;
-}
-
-/* BUTTON */
-.button{
-    width: 100%;
-    padding: 12px;
-    background: #c0392b;
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.button:hover{
-    background: #922b21;
-}
-</style>
-
-
+        .btn-row { display: flex; gap: 15px; margin-top: 10px; }
+        .button {
+            flex: 2; padding: 14px; background: var(--primary); color: #fff;
+            border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        }
+        .button:hover { background: #922b21; }
+        .btn-cancel {
+            flex: 1; padding: 14px; background: #e2e8f0; color: #475569;
+            text-align: center; text-decoration: none; border-radius: 8px; font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard_sidebar">
-        <ul>
-            <li><a href="addproduct.php">Add Product</a></li>
-            <li><a href="displayproduct.php">View Products</a></li>
-            <li><a href="vieworders.php">View Orders</a></li>
-            <li><a href="dashboard.php">Dashboard</a></li>
-            <li><a href="../logout.php">Logout</a></li>
-        </ul>
-    </div>
-    <div class="dashboard_main">
+
+<div class="sidebar">
+    <ul>
+        <li><a href="dashboard.php">Dashboard</a></li>
+        <li><a href="displayproduct.php">View Products</a></li>
+        <li><a href="vieworders.php">View Orders</a></li>
+        <li><a href="../logout.php">Logout</a></li>
+    </ul>
+</div>
+
+<div class="main-content">
+    <div class="form-card">
+        <h2><i class="fa-solid fa-pen-to-square"></i> Update Product Details</h2>
         
-            <form action="updateproduct.php?product_id=<?php echo $product_id?>" method="post" enctype="multipart/form-data">
-                <input type="text" name="name" value="<?php echo $row2['name']; ?>">
-                <textarea name="description">
-                    <?php echo $row2['description']; ?>
-                </textarea>
-                <input type="number" name="price" value="<?php echo $row2['price']; ?>">
-                <input type="number" name="stock" value="<?php echo $row2['stock']; ?>">
-                <img src="../image/<?php echo $row2['name']; ?>" alt="">
+        <?php if(isset($error)) echo "<p style='color:red; margin-bottom:15px;'>$error</p>"; ?>
+
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" name="name" value="<?= htmlspecialchars($product['name']); ?>" required>
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="4" required><?= htmlspecialchars($product['description']); ?></textarea>
+            </div>
+
+            <div style="display: flex; gap: 20px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Price (₹)</label>
+                    <input type="number" step="0.01" name="price" value="<?= $product['price']; ?>" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Stock Quantity</label>
+                    <input type="number" name="stock" value="<?= $product['stock']; ?>" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Current Product Image</label>
+                <div class="current-img-box">
+                    <img src="../image/<?= $product['image']; ?>" alt="Product">
+                    <div style="font-size: 13px; color: #64748b;">
+                        <b>Filename:</b> <?= $product['image']; ?><br>
+                        <span>Leave empty to keep current image</span>
+                    </div>
+                </div>
                 <input type="file" name="image">
-                <h1>Category Name is:<?php echo $row2['category_name']; ?></h1>
-                <select name="category_name" >
-                    <?php 
-                while($row = mysqli_fetch_assoc($result1)){
-                ?>
-                    <option value="<?php echo $row['name']; ?>"><?php echo $row['name']; ?></option>
-                    <?php } ?>
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <select name="category_name">
+                    <?php while($cat = mysqli_fetch_assoc($cat_result)): ?>
+                        <option value="<?= $cat['name']; ?>" <?= ($cat['name'] == $product['category_name']) ? 'selected' : ''; ?>>
+                            <?= ucfirst($cat['name']); ?>
+                        </option>
+                    <?php endwhile; ?>
                 </select>
-                
-                <input class="button" type="submit" name="submit" value="Update Product">
-            </form>
-        
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" name="submit" class="button">Update Sneaker</button>
+                <a href="displayproduct.php" class="btn-cancel">Cancel</a>
+            </div>
+        </form>
     </div>
+</div>
+
 </body>
 </html>

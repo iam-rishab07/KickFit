@@ -2,211 +2,274 @@
 session_start();
 include "db.php";
 
-/* PRODUCT FILTER */
-if(isset($_GET['category_name'])) {
-    $category_name = mysqli_real_escape_string($conn,$_GET['category_name']);
-    $sql_product_category = "SELECT id,name,description,price,stock,image 
-                             FROM products 
-                             WHERE category_name='$category_name' AND stock>0";
-} else {
-    $sql_product_category = "SELECT id,name,description,price,stock,image 
-                             FROM products 
-                             WHERE stock>0";
+/* ================= BUY NOW LOGIC ================= */
+if(isset($_POST['buy_now']) && isset($_SESSION['user_id'])){
+    $user_id    = $_SESSION['user_id'];
+    $product_id = intval($_POST['product_id']);
+    $quantity   = intval($_POST['quantity']);
+
+    // Use Prepared Statements for security
+    $stmt = $conn->prepare("SELECT price, stock FROM products WHERE id = ?");
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $product_data = $stmt->get_result()->fetch_assoc();
+
+    if($product_data){
+        $price = $product_data['price'];
+        $stock = $product_data['stock'];
+
+        if($quantity > 0 && $quantity <= $stock){
+            $total_amount = $price * $quantity;
+
+            // 1. Create Order
+            $stmt_order = $conn->prepare("INSERT INTO orders (user_id, total_amount, order_date) VALUES (?, ?, NOW())");
+            $stmt_order->bind_param("id", $user_id, $total_amount);
+            
+            if($stmt_order->execute()){
+                $order_id = $conn->insert_id;
+
+                // 2. Insert Item
+                $stmt_item = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity) VALUES (?, ?, ?)");
+                $stmt_item->bind_param("iii", $order_id, $product_id, $quantity);
+                $stmt_item->execute();
+
+                // 3. Update Stock
+                $new_stock = $stock - $quantity;
+                $stmt_stock = $conn->prepare("UPDATE products SET stock = ? WHERE id = ?");
+                $stmt_stock->bind_param("ii", $new_stock, $product_id);
+                $stmt_stock->execute();
+
+                echo "<script>alert('🔥 Order Placed! Get ready to flex.'); window.location='index.php';</script>";
+                exit();
+            }
+        } else {
+            echo "<script>alert('Sold out or invalid quantity!');</script>";
+        }
+    }
 }
-$result_product_category = mysqli_query($conn,$sql_product_category);
 
-/* CATEGORIES */
-$result_category = mysqli_query($conn,"SELECT name FROM categories");
+/* ================= DATA FETCHING ================= */
+$cat_filter = isset($_GET['category_name']) ? $_GET['category_name'] : null;
 
-/* CART COUNT */
+if($cat_filter) {
+    $p_stmt = $conn->prepare("SELECT * FROM products WHERE category_name = ? AND stock > 0");
+    $p_stmt->bind_param("s", $cat_filter);
+} else {
+    $p_stmt = $conn->prepare("SELECT * FROM products WHERE stock > 0");
+}
+$p_stmt->execute();
+$products = $p_stmt->get_result();
+
+$categories = $conn->query("SELECT name FROM categories");
+
+// Cart Count
 $cart_count = 0;
 if(isset($_SESSION['user_id'])){
-    $uid = $_SESSION['user_id'];
-    $count_res = mysqli_query($conn,"SELECT SUM(quantity) as total FROM cart WHERE user_id='$uid'");
-    $cart_data = mysqli_fetch_assoc($count_res);
-    $cart_count = $cart_data['total'] ? $cart_data['total'] : 0;
+    $u_id = $_SESSION['user_id'];
+    $cart_res = $conn->query("SELECT SUM(quantity) as total FROM cart WHERE user_id='$u_id'");
+    $cart_count = $cart_res->fetch_assoc()['total'] ?? 0;
 }
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>KickFit — Step Into Style</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>KickFit — Elite Sneakers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --accent: #ff3e3e;
+            --dark: #0f1113;
+            --gray: #f8f9fa;
+            --text-main: #1d1d1f;
+        }
 
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
-body{background:#f2f3f7;color:#111}
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background: var(--gray); color: var(--text-main); line-height: 1.6; }
 
-/* HEADER */
-.header{
-position:fixed;top:0;width:100%;z-index:1000;
-display:flex;justify-content:space-between;align-items:center;
-padding:12px 50px;background:#fff;
-box-shadow:0 1px 6px rgba(0,0,0,.08);
-}
+        /* Header Navigation */
+        .header { 
+            position: fixed; top: 0; width: 100%; z-index: 1000; 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 15px 8%; background: rgba(255,255,255,0.9); 
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .logo img { height: 40px; transition: 0.3s; }
+        .nav ul { display: flex; list-style: none; align-items: center; gap: 30px; }
+        .nav a { text-decoration: none; color: var(--text-main); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        .nav a:hover { color: var(--accent); }
 
-/* LOGO IMAGE */
-.logo img{
-height:45px;
-width:auto;
-display:block;
-}
+        /* Cart Icon */
+        .cart-link { position: relative; font-size: 1.2rem; }
+        .cart-badge { 
+            position: absolute; top: -10px; right: -12px; 
+            background: var(--accent); color: #fff; 
+            font-size: 10px; border-radius: 50%; padding: 2px 6px; 
+        }
 
-.nav ul{display:flex;list-style:none;align-items:center}
-.nav li{margin-left:24px}
-.nav a{text-decoration:none;color:#333;font-weight:600}
+        /* Hero Section */
+        .hero { 
+            margin-top: 70px; height: 70vh; 
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('image/puma.jpg') center/cover no-repeat;
+            display: flex; align-items: center; justify-content: center; text-align: center; color: #fff;
+        }
+        .hero-content h1 { font-size: 3.5rem; text-transform: uppercase; font-weight: 900; letter-spacing: -1px; }
+        .hero-btn { 
+            display: inline-block; margin-top: 20px; padding: 15px 35px; 
+            background: #fff; color: #000; text-decoration: none; 
+            font-weight: 800; border-radius: 4px; transition: 0.3s; 
+        }
+        .hero-btn:hover { background: var(--accent); color: #fff; transform: scale(1.05); }
 
-/* CART BADGE */
-.cart{
-position:relative;font-size:20px;
-}
-.cart-count{
-position:absolute;top:-8px;right:-10px;
-background:#e74c3c;color:#fff;
-font-size:12px;border-radius:50%;
-padding:3px 7px;
-}
+        /* Category Strip */
+        .cat-strip { 
+            display: flex; justify-content: center; gap: 15px; padding: 25px; 
+            background: #fff; overflow-x: auto; 
+        }
+        .cat-item { 
+            padding: 8px 20px; border: 1px solid #ddd; border-radius: 50px; 
+            text-decoration: none; color: #555; font-weight: 600; font-size: 14px;
+            transition: 0.3s; white-space: nowrap;
+        }
+        .cat-item:hover, .cat-item.active { background: var(--dark); color: #fff; border-color: var(--dark); }
 
-/* HERO */
-.hero{
-margin-top:78px;height:400px;
-background:linear-gradient(to right,#111 45%,transparent),
-url('image/puma.jpg') center/cover no-repeat;
-display:flex;align-items:center;padding-left:70px;color:#fff;
-}
-.hero h1{font-size:46px}
-.hero p{opacity:.85;margin:10px 0 18px}
-.hero-btn{background:#e74c3c;color:#fff;padding:12px 26px;border-radius:30px;text-decoration:none;font-weight:bold}
+        /* Product Grid */
+        .container { max-width: 1300px; margin: 0 auto; padding: 40px 20px; }
+        .grid-title { margin-bottom: 30px; font-size: 24px; font-weight: 800; text-transform: uppercase; }
+        
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; }
+        .p-card { 
+            background: #fff; border-radius: 8px; overflow: hidden; 
+            transition: 0.3s; position: relative; border: 1px solid #eee;
+        }
+        .p-card:hover { transform: translateY(-10px); box-shadow: 0 20px 30px rgba(0,0,0,0.1); }
+        
+        .p-img-wrapper { position: relative; height: 280px; overflow: hidden; background: #fdfdfd; }
+        .p-img-wrapper img { width: 100%; height: 100%; object-fit: contain; padding: 20px; transition: 0.5s; }
+        .p-card:hover .p-img-wrapper img { transform: scale(1.1); }
 
-/* CATEGORY */
-.category-strip{
-background:#fff;padding:16px 40px;
-display:flex;gap:16px;overflow-x:auto;border-bottom:1px solid #eee;
-}
-.category-strip a{
-padding:9px 18px;background:#f4f4f4;border-radius:20px;text-decoration:none;color:#333;font-weight:bold;white-space:nowrap;
-}
+        .p-details { padding: 20px; }
+        .p-tag { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+        .p-name { font-size: 18px; font-weight: 700; margin: 5px 0; color: var(--dark); }
+        .p-price { font-size: 1.2rem; font-weight: 600; color: #333; margin-bottom: 15px; }
 
-/* PRODUCTS */
-.section-title{margin:40px 60px 10px;font-size:26px}
-.products{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
-gap:26px;padding:20px 60px 60px;
-}
-.product{
-background:#fff;border-radius:14px;overflow:hidden;
-display:flex;flex-direction:column;
-transition:transform .25s ease;
-}
-.product:hover{transform:translateY(-4px)}
+        /* Form styling */
+        .action-area { display: flex; flex-direction: column; gap: 10px; }
+        .qty-input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%; margin-bottom: 5px; }
+        
+        .btn { 
+            padding: 12px; border: none; border-radius: 4px; 
+            font-weight: 700; cursor: pointer; transition: 0.3s; font-size: 13px; text-transform: uppercase;
+        }
+        .btn-buy { background: var(--dark); color: #fff; }
+        .btn-buy:hover { background: var(--accent); }
+        .btn-cart { background: #f0f0f0; color: var(--dark); border: 1px solid #ddd; }
+        .btn-cart:hover { background: #e0e0e0; }
 
-.product img{
-width:100%;height:200px;object-fit:cover;display:block;
-}
+        .footer { background: var(--dark); color: #888; text-align: center; padding: 40px; margin-top: 60px; font-size: 13px; }
 
-.product-body{padding:14px;display:flex;flex-direction:column;flex:1}
-.product-body h3{font-size:17px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.desc{font-size:14px;color:#666;height:36px;overflow:hidden;margin-bottom:6px}
-.price{font-weight:bold;margin-bottom:8px}
-
-/* QTY */
-.qty-box{display:flex;gap:8px;margin-bottom:8px}
-.qty-box input{width:55px;padding:6px;border-radius:6px;border:1px solid #ccc;text-align:center}
-
-/* BUTTONS */
-.buy-btn,.cart-btn{
-padding:9px;border-radius:8px;text-align:center;font-weight:bold;border:none;cursor:pointer;width:100%;margin-bottom:6px
-}
-.buy-btn{background:#111;color:#fff}
-.buy-btn:hover{background:#e74c3c}
-.cart-btn{background:#e74c3c;color:#fff}
-.cart-btn:hover{background:#111}
-
-/* FOOTER */
-.footer{background:#111;color:#aaa;text-align:center;padding:22px;margin-top:40px;font-size:14px}
-</style>
+        @media (max-width: 768px) {
+            .header { padding: 15px 5%; }
+            .hero-content h1 { font-size: 2.2rem; }
+            .nav ul { gap: 15px; }
+        }
+    </style>
 </head>
-
 <body>
-
+<?php include "loader.php"; ?>
 <header class="header">
     <div class="logo">
-        <a href="index.php">
-            <img src="image/logoo.png" alt="KickFit Logo">
-        </a>
+        <a href="index.php"><img src="image/logoo.png" alt="KickFit"></a>
     </div>
     <nav class="nav">
         <ul>
             <li><a href="index.php">Shop</a></li>
-            <?php if(!isset($_SESSION['user_id'])){ ?>
+            <?php if(!isset($_SESSION['user_id'])): ?>
                 <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Signup</a></li>
-            <?php } else { ?>
-                <li><a href="admin/dashboard.php">Dashboard</a></li>
-                <li class="cart">
-                    <a href="cart.php">🛒</a>
-                    <span class="cart-count"><?php echo $cart_count; ?></span>
+            <?php else: ?>
+                <li>
+                    <?php if($_SESSION['user_role'] === 'admin'): ?>
+                        <a href="admin/dashboard.php"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+                    <?php else: ?>
+                        <a href="dashboard.php"><i class="fa-solid fa-user"></i> My Account</a>
+                    <?php endif; ?>
                 </li>
-            <?php } ?>
+                
+                <li>
+                    <a href="cart.php" class="cart-link">
+                        <i class="fa-solid fa-cart-shopping"></i> Cart
+                        <span class="cart-badge"><?= $cart_count ?></span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="logout.php" style="color: var(--accent);"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a>
+                </li>
+            <?php endif; ?>
         </ul>
     </nav>
 </header>
 
-<!-- REST OF YOUR CODE REMAINS SAME -->
-
 <section class="hero">
-    <div>
-        <h1>Move Different. Walk Bold.</h1>
-        <p>Performance meets street style.</p>
-        <a href="#shop" class="hero-btn">Shop Collection</a>
+    <div class="hero-content">
+        <h1>Unleash Your Pace</h1>
+        <p>Premium footwear for those who never stop moving.</p>
+        <a href="#shop" class="hero-btn">Explore Now</a>
     </div>
 </section>
 
-<div class="category-strip">
-<?php while($cat=mysqli_fetch_assoc($result_category)){ ?>
-    <a href="index.php?category_name=<?php echo $cat['name'];?>">
-        <?php echo ucfirst($cat['name']);?>
-    </a>
-<?php } ?>
+<div class="cat-strip">
+    <a href="index.php" class="cat-item <?= !$cat_filter ? 'active' : '' ?>">All Kicks</a>
+    <?php while($cat = $categories->fetch_assoc()): ?>
+        <a href="index.php?category_name=<?= urlencode($cat['name']) ?>" 
+           class="cat-item <?= ($cat_filter == $cat['name']) ? 'active' : '' ?>">
+            <?= ucfirst($cat['name']) ?>
+        </a>
+    <?php endwhile; ?>
 </div>
 
-<h2 class="section-title" id="shop">Popular Right Now</h2>
-
-<section class="products">
-<?php while($row=mysqli_fetch_assoc($result_product_category)){ ?>
-<div class="product">
-    <img src="image/<?php echo $row['image'];?>" loading="lazy">
-    <div class="product-body">
-        <h3><?php echo $row['name'];?></h3>
-        <div class="desc"><?php echo $row['description'];?></div>
-        <div class="price">₹ <?php echo $row['price'];?></div>
-
-        <?php if(isset($_SESSION['user_id'])){ ?>
-        <form action="addtocart.php" method="post">
-            <input type="hidden" name="product_id" value="<?php echo $row['id'];?>">
-            <div class="qty-box">
-                <input type="number" name="quantity" value="1" min="1" max="<?php echo $row['stock'];?>">
+<main class="container" id="shop">
+    <h2 class="grid-title">New Arrivals</h2>
+    
+    <div class="product-grid">
+        <?php while($row = $products->fetch_assoc()): ?>
+        <div class="p-card">
+            <div class="p-img-wrapper">
+                <img src="image/<?= $row['image'] ?>" alt="<?= $row['name'] ?>" loading="lazy">
             </div>
-            <button class="cart-btn">Add to Cart</button>
-        </form>
+            <div class="p-details">
+                <span class="p-tag"><?= $row['stock'] < 5 ? 'Only '.$row['stock'].' Left!' : 'In Stock' ?></span>
+                <h3 class="p-name"><?= $row['name'] ?></h3>
+                <div class="p-price">₹ <?= number_format($row['price'], 2) ?></div>
 
-        <form action="singleorder.php" method="get">
-            <input type="hidden" name="user_id" value="<?php echo $_SESSION['user_id'];?>">
-            <input type="hidden" name="product_id" value="<?php echo $row['id'];?>">
-            <input type="hidden" name="product_price" value="<?php echo $row['price'];?>">
-            <button class="buy-btn">Buy Now</button>
-        </form>
-        <?php } else { ?>
-            <a href="login.php" class="buy-btn">Login to Buy</a>
-        <?php } ?>
+                <div class="action-area">
+                    <?php if(isset($_SESSION['user_id'])): ?>
+                        <form method="post">
+                            <input type="hidden" name="product_id" value="<?= $row['id'] ?>">
+                            <input type="number" name="quantity" class="qty-input" value="1" min="1" max="<?= $row['stock'] ?>">
+                            
+                            <button formaction="addtocart.php" class="btn btn-cart" style="width: 100%; margin-bottom: 8px;">
+                                <i class="fa-solid fa-plus"></i> Add to Cart
+                            </button>
+                            <button type="submit" name="buy_now" class="btn btn-buy" style="width: 100%;">
+                                Buy Instantly
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <a href="login.php" class="btn btn-buy" style="text-decoration: none; text-align:center">Login to Order</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endwhile; ?>
     </div>
-</div>
-<?php } ?>
-</section>
+</main>
 
-<footer class="footer">© KickFit — Fashion Forward Footwear</footer>
+<footer class="footer">
+    <p>&copy; <?= date('Y') ?> KickFit Footwear Co. All Rights Reserved.</p>
+</footer>
 
 </body>
 </html>

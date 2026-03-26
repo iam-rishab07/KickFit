@@ -2,224 +2,233 @@
 session_start();
 include "../db.php";
 
-/* ---------- ACCESS CONTROL ---------- */
-if(!isset($_SESSION['user_id'])) {
-    header("Location: ../index.php");
+/* ---------- ACCESS CONTROL (Prepared) ---------- */
+if(!isset($_SESSION['user_id']) || $_SESSION['user_role'] != "admin") {
+    header("Location: ../login.php");
     exit();
 }
 
-if($_SESSION['user_role'] != "admin") {
-    header("Location: ../dashboard.php");
-    exit();
-}
-
-/* ---------- FETCH ADMIN DATA ---------- */
 $admin_id = $_SESSION['user_id'];
-$sql_admin = "SELECT name, email, phone, address, role FROM users WHERE id = '$admin_id'";
-$result_admin = mysqli_query($conn, $sql_admin);
-$admin = mysqli_fetch_assoc($result_admin);
+$stmt = $conn->prepare("SELECT name, email, phone, address, role FROM users WHERE id = ?");
+$stmt->bind_param("i", $admin_id);
+$stmt->execute();
+$admin = $stmt->get_result()->fetch_assoc();
 
+/* ---------- DASHBOARD STATS ---------- */
+$product_count = $conn->query("SELECT COUNT(*) as t FROM products")->fetch_assoc()['t'];
+$user_count = $conn->query("SELECT COUNT(*) as t FROM users WHERE role='user'")->fetch_assoc()['t'];
+$direct = $conn->query("SELECT COUNT(*) as t FROM single_order")->fetch_assoc()['t'];
+$cart = $conn->query("SELECT COUNT(*) as t FROM orders")->fetch_assoc()['t'];
+$order_count = $direct + $cart;
 
-/* ======================================================
-   🔥 DASHBOARD STATS (COMBINED ORDER SYSTEM)
-   ====================================================== */
-
-// 🟢 Total Products
-$product_count = mysqli_fetch_assoc(mysqli_query($conn,
-    "SELECT COUNT(*) as total FROM products"
-))['total'];
-
-// 🟢 Total Users
-$user_count = mysqli_fetch_assoc(mysqli_query($conn,
-    "SELECT COUNT(*) as total FROM users WHERE role='user'"
-))['total'];
-
-/* 🟢 TOTAL ORDERS (Buy Now + Cart Checkout) */
-$direct_orders = mysqli_fetch_assoc(mysqli_query($conn,
-    "SELECT COUNT(*) as total FROM single_order"
-))['total'];
-
-$cart_orders = mysqli_fetch_assoc(mysqli_query($conn,
-    "SELECT COUNT(*) as total FROM orders"
-))['total'];
-
-$order_count = $direct_orders + $cart_orders;
-
-/* 🟢 TOTAL REVENUE (ONLY FROM PAYMENTS) */
-$revenue = mysqli_fetch_assoc(mysqli_query($conn,
-    "SELECT SUM(total_amount) as total FROM payments"
-))['total'];
-
-if(!$revenue) $revenue = 0;
-
+$revenue_query = "SELECT 
+    (IFNULL((SELECT SUM(total_amount) FROM orders), 0) + 
+     IFNULL((SELECT SUM(total_amount) FROM single_order), 0)) as lifetime_revenue";
+$revenue_res = $conn->query($revenue_query);
+$revenue = $revenue_res->fetch_assoc()['lifetime_revenue'];
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KickFit | Admin Console</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #c0392b;
+            --sidebar-dark: #1a1c1e;
+            --bg-light: #f8fafc;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --white: #ffffff;
+            --transition: all 0.3s ease;
+        }
 
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family: Arial, Helvetica, sans-serif;}
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', system-ui, sans-serif; }
+        body { background: var(--bg-light); color: var(--text-dark); display: flex; }
 
-/* SIDEBAR */
-.dashboard_sidebar{
-    position: fixed;
-    top:0;
-    left:0;
-    width:230px;
-    height:100vh;
-    background:#c0392b;
-    padding-top:25px;
-    box-shadow:2px 0 12px rgba(0,0,0,0.15);
-}
+        /* SIDEBAR */
+        .sidebar { width: 260px; height: 100vh; background: var(--sidebar-dark); position: fixed; padding: 30px 0; display: flex; flex-direction: column; z-index: 1000; }
+        .sidebar-brand { color: var(--white); font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 40px; letter-spacing: 1px; }
+        .sidebar-brand span { color: var(--primary); }
+        .sidebar-nav { list-style: none; flex: 1; }
+        .sidebar-nav li { padding: 5px 20px; }
+        .sidebar-nav a { display: flex; align-items: center; padding: 12px 15px; color: #94a3b8; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500; transition: var(--transition); }
+        .sidebar-nav a i { width: 25px; font-size: 18px; }
+        .sidebar-nav a:hover, .sidebar-nav a.active { background: rgba(192, 57, 43, 0.1); color: var(--primary); }
+        .logout-box { padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .logout-btn { color: #ff4757; text-decoration: none; font-size: 14px; font-weight: 600; }
 
-.dashboard_sidebar h2{
-    color:white;
-    text-align:center;
-    margin-bottom:25px;
-    letter-spacing:1px;
-}
+        /* MAIN CONTENT */
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 40px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; }
+        .welcome-msg h1 { font-size: 28px; font-weight: 800; color: var(--text-dark); }
+        .welcome-msg p { color: var(--text-muted); margin-top: 5px; }
 
-.dashboard_sidebar ul{list-style:none;}
+        /* STATS GRID */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; margin-bottom: 40px; }
+        .stat-card { background: var(--white); padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: var(--transition); }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .stat-info h3 { font-size: 13px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+        .stat-info .number { font-size: 26px; font-weight: 800; margin-top: 5px; color: var(--text-dark); }
+        .stat-icon { width: 50px; height: 50px; background: rgba(192, 57, 43, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 20px; }
 
-.dashboard_sidebar ul li a{
-    display:block;
-    padding:13px 25px;
-    color:white;
-    text-decoration:none;
-    transition:0.3s;
-    font-weight:500;
-}
+        /* DASHBOARD GRID */
+        .dashboard-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px; }
+        .card { background: var(--white); padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; }
+        .card h2 { font-size: 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .edit-btn { position: absolute; top: 25px; right: 25px; background: var(--primary); color: #fff; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; }
 
-.dashboard_sidebar ul li a:hover{
-    background:#922b21;
-    padding-left:32px;
-}
+        .profile-list { list-style: none; }
+        .profile-list li { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .profile-list li:last-child { border-bottom: none; }
+        .label { color: var(--text-muted); font-size: 14px; }
+        .value { font-weight: 600; color: var(--text-dark); }
 
-/* MAIN AREA */
-.dashboard_main{
-    margin-left:230px;
-    padding:35px 45px;
-    background:#f4f6f9;
-    min-height:100vh;
-}
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .action-btn { background: var(--bg-light); padding: 20px; border-radius: 12px; text-align: center; text-decoration: none; color: var(--text-dark); font-weight: 600; font-size: 13px; transition: var(--transition); border: 1px solid transparent; }
+        .action-btn:hover { background: var(--white); border-color: var(--primary); color: var(--primary); }
+        .action-btn i { display: block; font-size: 22px; margin-bottom: 10px; }
 
-.dashboard_main h1{
-    color:#c0392b;
-    margin-bottom:25px;
-}
+        /* MODAL STYLES */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background: #fff; padding: 30px; border-radius: 16px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { font-size: 20px; }
+        .close-modal { cursor: pointer; font-size: 20px; color: var(--text-muted); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 5px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .save-btn { width: 100%; background: var(--primary); color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 10px; }
 
-/* STATS GRID */
-.stats_grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap:20px;
-    margin-bottom:35px;
-}
-
-.stat_card{
-    background:white;
-    padding:22px;
-    border-radius:10px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.08);
-    transition:0.3s;
-}
-
-.stat_card:hover{transform:translateY(-5px);}
-
-.stat_card h3{
-    color:#888;
-    font-size:14px;
-    margin-bottom:10px;
-}
-
-.stat_card .number{
-    font-size:28px;
-    font-weight:bold;
-    color:#c0392b;
-}
-
-/* PROFILE CARD */
-.profile_card{
-    background:white;
-    padding:25px 30px;
-    border-radius:10px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
-    max-width:600px;
-}
-
-.profile_card h2{
-    color:#c0392b;
-    margin-bottom:15px;
-}
-
-.profile_item{
-    margin:10px 0;
-    font-size:15px;
-}
-
-.profile_item span{
-    font-weight:bold;
-    color:#333;
-}
-</style>
+        @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    </style>
 </head>
-
 <body>
 
-<div class="dashboard_sidebar">
-    <h2>KICKFIT ADMIN</h2>
-    <ul>
-        <li><a href="addproduct.php">Add Product</a></li>
-        <li><a href="displayproduct.php">View Products</a></li>
-        <li><a href="vieworders.php">View Orders</a></li>
-        <li><a href="../index.php">Home</a></li>
-        <li><a href="../logout.php">Logout</a></li>
+<aside class="sidebar">
+    <div class="sidebar-brand">KICK<span>FIT</span></div>
+    <ul class="sidebar-nav">
+        <li><a href="#" class="active"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
+        <li><a href="displayproduct.php"><i class="fa-solid fa-box"></i> Inventory</a></li>
+        <li><a href="vieworders.php"><i class="fa-solid fa-cart-shopping"></i> Orders</a></li>
+        <li><a href="analytics.php"><i class="fa-solid fa-chart-line"></i> Analytics</a></li>
+        <li><a href="../index.php"><i class="fa-solid fa-globe"></i> Visit Site</a></li>
     </ul>
+    <div class="logout-box">
+        <a href="../logout.php" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</a>
+    </div>
+</aside>
+
+<main class="main-content">
+    <header class="header-flex">
+        <div class="welcome-msg">
+            <h1>Admin Console</h1>
+            <p>Welcome back, <?= explode(' ', $admin['name'])[0] ?>. Here's what's happening today.</p>
+        </div>
+    </header>
+
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-info">
+                <h3>Products</h3>
+                <div class="number"><?= $product_count ?></div>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <h3>Total Users</h3>
+                <div class="number"><?= $user_count ?></div>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <h3>Orders</h3>
+                <div class="number"><?= $order_count ?></div>
+            </div>
+            <div class="stat-icon"><i class="fa-solid fa-bag-shopping"></i></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-info">
+                <h3>Overall Revenue</h3>
+                <div class="number">₹<?= number_format($revenue, 2) ?></div>
+            </div>
+            <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+        </div>
+    </section>
+
+    <div class="dashboard-grid">
+        <section class="card">
+            <button class="edit-btn" onclick="openModal()"><i class="fa-solid fa-pen-to-square"></i> Edit Profile</button>
+            <h2><i class="fa-solid fa-user-shield" style="color:var(--primary)"></i> Admin Profile</h2>
+            <ul class="profile-list">
+                <li><span class="label">Full Name</span> <span class="value"><?= $admin['name'] ?></span></li>
+                <li><span class="label">Email Address</span> <span class="value"><?= $admin['email'] ?></span></li>
+                <li><span class="label">Contact</span> <span class="value"><?= $admin['phone'] ?></span></li>
+                <li><span class="label">Address</span> <span class="value"><?= $admin['address'] ?></span></li>
+                <li><span class="label">Account Role</span> <span class="value" style="color:var(--primary)">ADMINISTRATOR</span></li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2><i class="fa-solid fa-bolt" style="color:#f1c40f"></i> Quick Actions</h2>
+            <div class="quick-actions">
+                <a href="addproduct.php" class="action-btn"><i class="fa-solid fa-plus"></i> Add Product</a>
+                <a href="analytics.php" class="action-btn"><i class="fa-solid fa-chart-pie"></i> Reports</a>
+                <a href="vieworders.php" class="action-btn"><i class="fa-solid fa-truck"></i> Ship Orders</a>
+                <a href="../index.php" class="action-btn"><i class="fa-solid fa-eye"></i> View Store</a>
+            </div>
+        </section>
+    </div>
+</main>
+
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Update Details</h2>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        <form action="update_admin.php" method="POST">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" value="<?= $admin['name'] ?>" required>
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" value="<?= $admin['email'] ?>" required>
+            </div>
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="text" name="phone" value="<?= $admin['phone'] ?>" required>
+            </div>
+            <div class="form-group">
+                <label>Address</label>
+                <textarea name="address" rows="3" required><?= $admin['address'] ?></textarea>
+            </div>
+            <button type="submit" class="save-btn">Update Profile</button>
+        </form>
+    </div>
 </div>
 
-<div class="dashboard_main">
-    <h1>Admin Dashboard</h1>
+<script>
+    function openModal() { document.getElementById('editModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+    
+    // Close modal if user clicks outside of it
+    window.onclick = function(event) {
+        let modal = document.getElementById('editModal');
+        if (event.target == modal) { modal.style.display = "none"; }
+    }
 
-    <!-- 🔥 STATS -->
-    <div class="stats_grid">
-
-        <div class="stat_card">
-            <h3>Total Products</h3>
-            <div class="number"><?php echo $product_count; ?></div>
-        </div>
-
-        <div class="stat_card">
-            <h3>Total Users</h3>
-            <div class="number"><?php echo $user_count; ?></div>
-        </div>
-
-        <div class="stat_card">
-            <h3>Total Orders</h3>
-            <div class="number"><?php echo $order_count; ?></div>
-        </div>
-
-        <div class="stat_card">
-            <h3>Total Revenue</h3>
-            <div class="number">₹<?php echo $revenue; ?></div>
-        </div>
-
-    </div>
-
-    <!-- ADMIN PROFILE -->
-    <div class="profile_card">
-        <h2>Admin Profile</h2>
-
-        <div class="profile_item"><span>Name:</span> <?php echo $admin['name']; ?></div>
-        <div class="profile_item"><span>Email:</span> <?php echo $admin['email']; ?></div>
-        <div class="profile_item"><span>Phone:</span> <?php echo $admin['phone']; ?></div>
-        <div class="profile_item"><span>Address:</span> <?php echo $admin['address']; ?></div>
-        <div class="profile_item"><span>Role:</span> <?php echo strtoupper($admin['role']); ?></div>
-    </div>
-
-</div>
+    // Check for success/error messages in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('success')) { alert('Profile updated successfully!'); }
+    if (urlParams.has('error')) { alert('Failed to update profile.'); }
+</script>
 
 </body>
 </html>
