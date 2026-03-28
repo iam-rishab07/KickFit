@@ -54,4 +54,4 @@
 
 ---
 
-© 2026 KickFit Team. Built with passion for great footwear.
+© 2026 KickFit Team. Built with passion for great Footwear.
